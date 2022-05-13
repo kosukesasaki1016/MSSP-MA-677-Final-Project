@@ -1,0 +1,346 @@
+---
+title: "MA677 Final Project"
+author: " Kosuke Sasaki"
+date: "2022/05/11"
+output:
+  pdf_document:
+    includes:
+      in_header: style.sty
+  html_document: default
+  word_document: default
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,	warning = FALSE)
+knitr::opts_chunk$set(fig.width=6, fig.height=3,fig.align = "center") 
+Sys.setenv("LANGUAGE" = "EN")
+Sys.setlocale("LC_ALL", "C")
+pacman::p_load(
+tidyverse,
+ggplot2,
+ggpubr,
+MASS,
+openxlsx,
+stringr,
+kableExtra,
+gridExtra,
+tidytext,
+mle.tools,
+fitdistrplus,
+deconvolveR,
+psych
+)
+
+```
+
+#Planning
+For this final project, first I started reading and tried to understand the relevant chapters in "In All Likelihood". However, as I did not have any math background, I expected it to be really hard to understand the contents by myself, and it was, so I also asked my classmates, especially Yuli, to help me understand them as well as to give some tips to solve the problems.  
+The results and the deriverable of my work are shown below. It was really fun to understand and get to know what I didn't know and solve these problems, and I also appreciate my classmates' kind help!
+
+## 4.25: Approximation of the median using the distribution of median statistics
+Based on the Example 4.8 of the textbook "In All Likelihood", the approximation of median of Ui is accurate. I will compare the values from the approximation with the value of expectation obtained from the distribtuion of the order statistics as below. [1]
+```{r}
+#Create pdf and cdf of uniform distribution(0,1)
+a <- 0
+b <- 1
+pdf <- function(x) dunif(x, a,b)
+cdf <- function(x) punif(x, a,b, lower.tail=FALSE)
+
+#Calculate the distribution of the order statistics
+integrand <- function(x,r,n) {x * (1 - cdf(x))^(r-1) * cdf(x)^(n-r) * pdf(x)}
+
+#Calculate the expectation from the above distribution
+Expect <- function(r,n) {
+  (1/beta(r,n-r+1)) * integrate(integrand,-Inf,Inf, r, n)$value
+  } 
+
+#Create approximation function from the text
+Approx <- function(k,n){ 
+  m<-(k-1/3)/(n+1/3)
+  return(m)
+}
+
+#Create table to compare approximation with expectation for n=5 and n=10 respectively
+Approximation5<- vector()
+Expectation5 <- vector()
+Approximation10<- vector()
+Expectation10 <- vector()
+
+for (i in 1:5) {
+  Approximation5 <- c(Approximation5, Approx(i,5))
+  Expectation5 <- c(Expectation5,Expect(i,5))
+}
+table1 <- data.frame(Approximation5, Expectation5)
+
+for (i in 1:10) {
+  Approximation10 <- c(Approximation10, Approx(i,10))
+  Expectation10 <- c(Expectation10,Expect(i,10))
+}
+table2 <- data.frame(Approximation10, Expectation10)
+
+kable(table1,caption = "Comparison of Approximation with Expectation (n=5)") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = "HOLD_position")
+
+kable(table2,caption = "Comparison of Approximation with Expectation (n=10)") %>%
+  kable_styling(position = "center") %>%
+  kable_styling(latex_options = "HOLD_position")
+
+```
+As you can see above tables, the smaller the value of n and the more extreme the value of i, the more the approximation tends to depart from the expectation. However, as already mentioned in the textbook, this approximation remains accurate to some extent even when n is small, especially when i is closer to the middle value.
+
+## 4.39: 
+First I entered the weight data and plot the histogram of the data as below.
+```{r}
+weight<-c(0.4, 1.0, 1.9, 3.0, 5.5, 8.1, 12.1, 25.6, 50.0, 56.0, 70.0, 115.0, 115.0, 119.5, 154.5, 157.0, 175.0, 179.0, 180.0, 406.0, 419.0, 423.0, 440.0, 655.0, 680.0, 1320.0, 4603.0, 5712.0)
+
+#Histogram of the data
+hist(weight, breaks = 50)
+
+#QQplot of the data
+qqnorm(weight)
+qqline(weight, col = "blue")
+```
+As you can see, the distribution is skewed to the right, so I could expect Box-Cox transformation similar to log-transform would work well (lambda=0). So first I looked at profile of likelihood of lambda of Box-Cox transformation family, and chose the lambda with maximum likelihood, which was expected to transform the distribution into approximate normal distribution. [2]
+
+```{r}
+#Create the profile of likelihood of lambda of Box-Cox
+b <- boxcox(lm(weight ~ 1))
+
+#Choose the lambda with maximum likelihood
+lambda <- b$x[which.max(b$y)] 
+```
+As we expected, the lambda with maximum likelihood is `r lambda`, which is around 0. Then I did Box-Cox transformation with the lambda value as below.
+
+```{r}
+# Exact lambda
+boxcoxweight <- (weight ^ lambda - 1) / lambda
+
+# The histogram of data transformed and its QQplot
+hist(boxcoxweight, breaks = 50)
+qqnorm(boxcoxweight)
+qqline(boxcoxweight, col = "blue")
+
+```
+After the Box-Cox transformation, the histogram and QQplot of the data show approximate normal.
+
+## 4.27: The amount of rainfall in Valencia
+### (a)
+```{r}
+#Set the dataset
+Jan<-c(0.15, 0.25, 0.10, 0.20, 1.85, 1.97, 0.80, 0.20, 0.10, 0.50, 0.82, 0.40,
+  1.80, 0.20, 1.12, 1.83, 0.45, 3.17, 0.89, 0.31, 0.59, 0.10, 0.10, 0.90,
+  0.10, 0.25, 0.10, 0.90)
+Jul<-c(0.30 ,0.22 ,0.10 ,0.12 ,0.20 ,0.10 ,0.10 ,0.10 ,0.10 ,0.10 ,0.10 ,0.17,
+  0.20 ,2.80 ,0.85 ,0.10 ,0.10 ,1.23 ,0.45 ,0.30 ,0.20 ,1.20 ,0.10 ,0.15,
+  0.10 ,0.20 ,0.10 ,0.20 ,0.35 ,0.62 ,0.20 ,1.22 ,0.30 ,0.80 ,0.15 ,1.53,
+  0.10 ,0.20 ,0.30 ,0.40 ,0.23 ,0.20 ,0.10 ,0.10 ,0.60 ,0.20 ,0.50 ,0.15,
+  0.60 ,0.30 ,0.80 ,1.10 ,0.20 ,0.10 ,0.10 ,0.10 ,0.42 ,0.85 ,1.60 ,0.10,
+  0.25 ,0.10 ,0.20 ,0.10)
+
+#Get summary statistics
+kable(describeBy(Jan),caption = "Summary statistics of rainfall in January") %>%
+  kable_styling(latex_options="scale_down") %>%
+  kable_styling(latex_options = "HOLD_position")
+kable(describeBy(Jul),caption = "Summary statistics of rainfall in July") %>%
+  kable_styling(latex_options="scale_down") %>%
+  kable_styling(latex_options = "HOLD_position")
+```
+
+Based on the summary statistics above, we can see that the amount of rainfall in July is less than that in January in terms of mean and maximum. We can also see that we have more data in July so that the standard deviation is less in July than in January.
+
+
+### (b)
+
+```{r}
+#Create QQplots
+qqnorm(Jan)
+qqline(Jan, col = "blue")
+qqnorm(Jul)
+qqline(Jul, col = "blue")
+
+#Create Density plots
+plot(density(Jan),main="Density plot in January")
+plot(density(Jul),main="Density plot in July")
+```
+
+Based on the QQplots and density plots, both data sets of rainfall in January and July seem to follow gamma distribution. Just to compare the distribution, I draw the gamma distribution with K=2 and theta=0.5 as below, which looks very similar to distributions of two data sets.[4]
+```{r}
+set.seed(2022)
+x <- rgamma(1000, 2, 0.5)
+truehist(x, xlim = c(0, 35))
+rm(x)
+```
+
+I also draw skewness-kurtosis plots and plot bootstrap samples as well as the true observations. Then we can see that both of the observations in January and July are very close to gamma distribution.[3]
+```{r}
+descdist(Jan, boot = 1000)
+descdist(Jul, boot = 1000)
+```
+
+### (c)
+First I fit a gamma model to the data from each month as below.[3]
+```{r}
+#Fit the gamma distribution to the data
+fitg1 <- fitdist(Jan, "gamma", method = "mle")
+fitg1
+
+fitg2 <- fitdist(Jul, "gamma", method = "mle")
+fitg2
+```
+MLE and its standard error for shape parameter in January are `r fitg1$estimate[1]` and `r fitg1$sd[1]` respectively.
+MLE and its standard error for rate parameter in January are `r fitg1$estimate[2]` and `r fitg1$sd[2]` respectively.
+MLE and its standard error for shape parameter in July are `r fitg2$estimate[1]` and `r fitg2$sd[1]` respectively.
+MLE and its standard error for rate parameter in January are `r fitg2$estimate[2]` and `r fitg2$sd[2]` respectively.
+
+Then I drew profile likelihood with contour based on the results of fitting gamma model to each data set as below.[4]
+```{r}
+#Draw contour in January
+x <- Jan
+NxPts <- 100
+NyPts <- 100
+
+xGridPts <- seq(from = 0, to = 2, length = NxPts)
+yGridPts <- seq(from = 0.4, to = 2.4, length = NyPts)
+
+xypairs <- expand.grid(xGridPts, yGridPts) 
+# coordinates of all gridpoints, rows of an N x 2 matrix
+# N = NxPts * NyPts
+LogLikFun <- function(shape, rate) sum(dgamma(x, shape = shape, rate = rate, log = TRUE))
+
+LogLikOnGrid <- mapply(LogLikFun, xypairs[ , 1], xypairs[ ,2]) # another long vector
+
+## There is an explicit "for loop" going on inside of "mapply".
+## There ought to be a "vectorised" way to do this.
+
+dim(LogLikOnGrid) <- c(NxPts, NyPts) # convert to matrix
+
+## I'll subtract the maximum from the log likelihood function.
+## We are only interested in *differences*, not in its absolute
+## value. Now I know the maximum of the surface is at height z = 0.
+## Also I reshape as a matrix.
+
+MaxLogLik <- max(LogLikOnGrid)
+LogLikOnGrid <- matrix(LogLikOnGrid, NxPts, NyPts) - max(LogLikOnGrid)
+
+#Draw contour of proflie likelihood
+
+contour(x = xGridPts, y = yGridPts, z = LogLikOnGrid)
+
+contour(x = xGridPts, y = yGridPts, z = LogLikOnGrid, 
+        levels = c( (0:-8)*10), col = "blue", add = TRUE)
+
+contour(x = xGridPts, y = yGridPts, z = LogLikOnGrid, 
+        levels = - qchisq(0.95, 2)/2, col = "red", add = TRUE)
+title("Contour of proflie likelihood (January)", xlab = "shape", ylab = "rate", font = 4)
+
+#Draw contour in July (repeat the same process above)
+x <- Jul
+xGridPts <- seq(from = 0, to = 2, length = NxPts)
+yGridPts <- seq(from = 1, to = 5, length = NyPts)
+xypairs <- expand.grid(xGridPts, yGridPts) 
+LogLikFun <- function(shape, rate) sum(dgamma(x, shape = shape, rate = rate, log = TRUE))
+LogLikOnGrid <- mapply(LogLikFun, xypairs[ , 1], xypairs[ ,2]) # another long vector
+dim(LogLikOnGrid) <- c(NxPts, NyPts)
+MaxLogLik <- max(LogLikOnGrid)
+LogLikOnGrid <- matrix(LogLikOnGrid, NxPts, NyPts) - max(LogLikOnGrid)
+contour(x = xGridPts, y = yGridPts, z = LogLikOnGrid)
+contour(x = xGridPts, y = yGridPts, z = LogLikOnGrid, 
+        levels = c( (0:-8)*10), col = "blue", add = TRUE)
+contour(x = xGridPts, y = yGridPts, z = LogLikOnGrid, 
+        levels = - qchisq(0.95, 2)/2, col = "red", add = TRUE)
+title("Contour of proflie likelihood (July)", xlab = "shape", ylab = "rate", font = 4)
+```
+
+```{r}
+# Expectation and variance are calculated by parameters as follows:
+# E(x)=hape/rate, Var(x)=shape/(rate^2)
+Ex1 <- as.numeric(fitg1$estimate[1]/fitg1$estimate[2])
+Var1 <- as.numeric(fitg1$estimate[1]/(fitg1$estimate[2]^2))
+Ex2 <- as.numeric(fitg2$estimate[1]/fitg2$estimate[2])
+Var2 <- as.numeric(fitg2$estimate[1]/(fitg2$estimate[2]^2))
+
+
+```
+Finally, I compared the parameters from the both data sets. Basically the parameters just decide the shape of gamma distribution, and what's important is we can calculate its expectation (rainfall) and variance based on the parameters.[5] Based on the parameters, the expectation and its variance of January was `r Ex1` and `r Var1`, and those of July was `r Ex2` and `r Var2`. These are quite similar to the mean and variance of the observations. So we can believe this gamma model fit well.
+We can also see that the expectation of rainfall in January is higher than that in July based on the results.
+
+### (d)
+Lastly, I drew QQplots to check if gamma model is adequate.
+```{r}
+qqcomp(fitg1, addlegend=FALSE, main="QQplot in January")
+qqcomp(fitg2, addlegend=FALSE, main="QQplot in July")
+```
+As you can see above, bot QQ-plots show adequate fit on the theoretical quantile line, which suggests this gammma models fit well.
+
+
+## The rainfall in Illinois
+
+### Identify the distribution of rainfall and Estimate the parameters of the distribution
+
+Use the data to identify the distribution of rainfall produced by the storms in southern Illinois.
+Estimate the parameters of the distribution using MLE. Prepare a discussion of your estimation,
+including how confident you are about your identification of the distribution and the accuracy of
+your parameter estimates.
+First, I drew density plots for each year as well as the on in total as below.
+
+```{r fig.height=6}
+rain=read.xlsx('Illinois_rain_1960-1964.xlsx')
+par(mfrow = c(3, 2))  
+plot(density(na.omit(rain$`1960`)),main="rainfall in 1960")
+plot(density(na.omit(rain$`1961`)),main="rainfall in 1961")
+plot(density(na.omit(rain$`1962`)),main="rainfall in 1962")
+plot(density(na.omit(rain$`1963`)),main="rainfall in 1963")
+plot(density(na.omit(rain$`1964`)),main="rainfall in 1964")
+plot(density(na.omit(unlist(rain))),main="rainfall in total")
+```
+
+Then, I drew kurtosis-skewness plots for the total dataset to see which distribution should be fitted.
+```{r}
+descdist(as.numeric(na.omit(unlist(rain))), boot = 1000)
+```
+Based on the plot above, I thought gamma plot could be fitted to this data sets again, and I fitted the gamma model to the data set as below.
+
+```{r}
+x <- as.numeric(na.omit(unlist(rain)))
+fit <- fitdist(x, "gamma",,method="mle")
+fit
+```
+
+```{r eval=FALSE}
+set.seed(2022)
+summary(bootdist(fit)) #boot get confidence interval
+```
+
+Table:Parametric bootstrap median and 95%CIs for the MLE parameters
+
+|   |Median |2.5%|97.5%|
+|---|-------|----|-----|
+|shape|0.4453178|0.3807186|0.5163997|
+|rate|1.9989008|1.5697775|2.5787418|
+
+
+
+The median and 95% CIs for MLEs based on bootstrap samples are shown above. We can also see how the gamma model fit the data by plotting empirical and theoretical density, QQ plot, CDFs, and P-P plot as below. Based on these plot as well as 95%CIs
+```{r fig.height=4}
+plot(fit)
+```
+
+\newpage
+## Reference
+
+1. Order statistics in R?
+https://stackoverflow.com/questions/24211595/order-statistics-in-r?msclkid=fd6683dac56711ecbfcea9bd8a172395
+
+2. Box Cox transformation in R 
+https://r-coder.com/box-cox-transformation-r/  
+
+3. fitdistrplus: An R Package for Fitting Distributions
+https://cran.r-project.org/web/packages/fitdistrplus/vignettes/paper2JSS.pdf
+
+4. Contour, R pubs
+https://rpubs.com/gill1109/contour
+
+5. Gamma Distribution Explained | What is Gamma Distribution?
+https://www.mygreatlearning.com/blog/gamma-distribution/#:~:text=The%20PDF%20of%20the%20Gamma%20Distribution&text=Shape%20parameter%20%CE%B1%20%3D%20k%20and,that%20follows%20the%20Poisson%20process.
