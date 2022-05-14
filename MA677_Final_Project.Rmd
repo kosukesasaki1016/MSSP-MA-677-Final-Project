@@ -34,7 +34,7 @@ psych
 
 ```
 
-#Planning
+# Planning
 For this final project, first I started reading and tried to understand the relevant chapters in "In All Likelihood". However, as I did not have any math background, I expected it to be really hard to understand the contents by myself, and it was, so I also asked my classmates, especially Yuli, to help me understand them as well as to give some tips to solve the problems.  
 The results and the deriverable of my work are shown below. It was really fun to understand and get to know what I didn't know and solve these problems, and I also appreciate my classmates' kind help!
 
@@ -279,10 +279,6 @@ As you can see above, bot QQ-plots show adequate fit on the theoretical quantile
 
 ### Identify the distribution of rainfall and Estimate the parameters of the distribution
 
-Use the data to identify the distribution of rainfall produced by the storms in southern Illinois.
-Estimate the parameters of the distribution using MLE. Prepare a discussion of your estimation,
-including how confident you are about your identification of the distribution and the accuracy of
-your parameter estimates.
 First, I drew density plots for each year as well as the on in total as below.
 
 ```{r fig.height=6}
@@ -304,7 +300,7 @@ Based on the plot above, I thought gamma plot could be fitted to this data sets 
 
 ```{r}
 x <- as.numeric(na.omit(unlist(rain)))
-fit <- fitdist(x, "gamma",,method="mle")
+fit <- fitdist(x, "gamma",method="mle")
 fit
 ```
 
@@ -326,6 +322,31 @@ The median and 95% CIs for MLEs based on bootstrap samples are shown above. We c
 ```{r fig.height=4}
 plot(fit)
 ```
+
+
+### Identify wet and dry years
+
+First I identify wet and dry years by comparing total amount of rainfall in each year with average rainfall across 1960-1961. I also compare the number of storms and the average rainfall individual storm produced in each year with each other to look for the reason of the wet and dry years.
+```{r}
+totalrain <- apply(rain,2,sum,na.rm=TRUE)
+totalave <- mean(totalrain)
+individualstorm <- apply(rain,2,mean,na.rm=TRUE)%>%round(5)
+indstormave <- round(fit$estimate[1]/fit$estimate[2],digits = 5)
+numstorm <- c(nrow(rain)-apply(is.na(rain),2,sum))
+avenumstorm <- mean(numstorm)
+```
+|   |1960|1961|1962|1963|1964|Average|
+|---|----|----|----|----|----|-------|
+|total rain|10.574|13.197|10.346|9.710|7.110|10.1874|
+|individual storm rain|0.22029|0.27494|0.18475|0.26243|0.18711|0.22436|
+|number of storms|48|48|56|37|38|45.4|
+ 
+As you can see above, we can say that 1960,1961, and 1962 are the wet years and 1963 and 1964 are dry years in terms of total amount of rain. For 1960 and 1962, the average rainfall individual storm produced was less than average of 5 years, but they have more storms, which caused the wet years. For 1961, the average rainfall individual storm produced was higher than average of 5 years and the number of storms was also more than average of 5 years. For 1963 and 1964, they have less storms than average, which seemed to cause dry years, even though the average rainfall individual storm produced in 1963 was higher than average of 5 years.
+
+### Generalizability
+
+The cause of wet and dry years were different in each year, sometimes it was the number of storms and sometimes it was average rainfall individual storm produced. So we cannot generalize this assessment to other years, and we need more consistent results by taking more records from other years.
+
 
 \newpage
 ## Reference
