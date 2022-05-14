@@ -347,6 +347,8 @@ As you can see above, we can say that 1960,1961, and 1962 are the wet years and 
 
 The cause of wet and dry years were different in each year, sometimes it was the number of storms and sometimes it was average rainfall individual storm produced. So we cannot generalize this assessment to other years, and we need more consistent results by taking more records from other years.
 
+## What I learned
+From this project, I learned how I could look for what I didn't know totally as well as how to fit the distribution to some data and utilize the fitted distribution. As I have no math background and have a lot of difficulty in completion of this project, but I found I can usually refere to online tips as well as lots of my classmates. This exprience itself is my precious deriveralbe in this project.
 
 \newpage
 ## Reference
