@@ -34,8 +34,8 @@ psych
 
 ```
 
-# Planning
-For this final project, first I started reading and tried to understand the relevant chapters in "In All Likelihood". However, as I did not have any math background, I expected it to be really hard to understand the contents by myself, and it was, so I also asked my classmates, especially Yuli, to help me understand them as well as to give some tips to solve the problems.  
+## Planning
+For this final project, first I started reading and tried to understand the relevant chapters in "In All Likelihood". However, as I did not have any math background, I expected it to be really hard to understand the contents by myself, and it was, so I also asked my classmates to help me understand them as well as to give some tips to solve the problems.  
 The results and the deriverable of my work are shown below. It was really fun to understand and get to know what I didn't know and solve these problems, and I also appreciate my classmates' kind help!
 
 ## 4.25: Approximation of the median using the distribution of median statistics
@@ -174,14 +174,14 @@ rm(x)
 ```
 
 I also draw skewness-kurtosis plots and plot bootstrap samples as well as the true observations. Then we can see that both of the observations in January and July are very close to gamma distribution.[3]
-```{r}
+```{r, message=FALSE, warning=FALSE}
 descdist(Jan, boot = 1000)
 descdist(Jul, boot = 1000)
 ```
 
 ### (c)
 First I fit a gamma model to the data from each month as below.[3]
-```{r}
+```{r, message=FALSE, warning=FALSE}
 #Fit the gamma distribution to the data
 fitg1 <- fitdist(Jan, "gamma", method = "mle")
 fitg1
@@ -293,12 +293,12 @@ plot(density(na.omit(unlist(rain))),main="rainfall in total")
 ```
 
 Then, I drew kurtosis-skewness plots for the total dataset to see which distribution should be fitted.
-```{r}
+```{r, message=FALSE,warning=FALSE}
 descdist(as.numeric(na.omit(unlist(rain))), boot = 1000)
 ```
 Based on the plot above, I thought gamma plot could be fitted to this data sets again, and I fitted the gamma model to the data set as below.
 
-```{r}
+```{r, message=FALSE,warning=FALSE}
 x <- as.numeric(na.omit(unlist(rain)))
 fit <- fitdist(x, "gamma",method="mle")
 fit
@@ -366,4 +366,5 @@ https://cran.r-project.org/web/packages/fitdistrplus/vignettes/paper2JSS.pdf
 https://rpubs.com/gill1109/contour
 
 5. Gamma Distribution Explained | What is Gamma Distribution?
-https://www.mygreatlearning.com/blog/gamma-distribution/#:~:text=The%20PDF%20of%20the%20Gamma%20Distribution&text=Shape%20parameter%20%CE%B1%20%3D%20k%20and,that%20follows%20the%20Poisson%20process.
+https://www.mygreatlearning.com/blog/gamma-distribution/#:~:text=The%20PDF%20of%20the%20Gamma%20Distribution&text=Shape%20parameter%\n
+20%CE%B1%20%3D%20k%20and,that%20follows%20the%20Poisson%20process.
